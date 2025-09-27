@@ -1,4 +1,3 @@
-# utils/error_handler.py
 from fastapi import Request, FastAPI
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
