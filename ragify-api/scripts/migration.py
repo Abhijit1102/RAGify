@@ -1,8 +1,11 @@
 from sqlalchemy import create_engine, text
 import os
+from dotenv import load_env
+
+load_env()
 
 # Neon Postgres URL (example from Neon)
-DATABASE_URL = "postgresql://neondb_owner:npg_ctUy09PDkuqi@ep-plain-rain-a1xtnq4t-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"  
+DATABASE_URL = os.getenv("POSTGRES_URI")  
 
 # Create engine
 engine = create_engine(DATABASE_URL)
