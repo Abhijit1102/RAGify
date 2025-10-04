@@ -8,7 +8,7 @@ from src.utils.error_handler import error_handler
 from src.config import Config
 
 # Import routers
-from src.routers import auth, health_check, me
+from src.routers import auth_router, health_check_router, user_router, document_router
 
 app = FastAPI(title="RAGify API")
 
@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,9 +33,11 @@ app.add_exception_handler(Exception, error_handler.generic_error_handler)
 
 # --- Routers ---
 API_PREFIX = "/api/v1"
-app.include_router(auth.router, prefix=API_PREFIX)
-app.include_router(health_check.router, prefix=API_PREFIX)
-app.include_router(me.router, prefix=API_PREFIX)
+app.include_router(health_check_router.router, prefix=API_PREFIX)
+app.include_router(auth_router.router, prefix=API_PREFIX)
+app.include_router(user_router.router, prefix=API_PREFIX)
+app.include_router(document_router.router, prefix=API_PREFIX)
+
 
 @app.get(f"{API_PREFIX}/ping")
 async def ping():

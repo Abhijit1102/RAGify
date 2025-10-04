@@ -26,22 +26,13 @@ def login(data: LoginSchema, response: Response, db: Session = Depends(get_db)):
     if not result:
         return api_response.error(message="Invalid credentials", status_code=401)
 
-    # JWT token
     token = result["token"]
 
-    # Set HttpOnly cookie
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        httponly=True,       # not accessible by JS
-        samesite="lax",      # CSRF protection
-        secure=False         # True if using HTTPS
-    )
-
     return api_response.success(
-        data={
-            "role": result["user"].role.value,
-            "token": token       # optional if you want React to store too
-        },
-        message="Login successful"
-    )
+    data={
+        "username": result["user"].username,
+        "role": result["user"].role.value,
+        "token": result["token"]  
+    },
+    message="Login successful"
+)
