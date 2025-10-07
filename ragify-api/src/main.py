@@ -8,8 +8,7 @@ from src.utils.error_handler import error_handler
 from src.config import Config
 
 # Import routers
-from src.routers import auth_router, health_check_router, user_router, document_router
-
+from src.routers import auth_router, health_check_router, user_router, document_router, search_router, chat_router
 app = FastAPI(title="RAGify API")
 
 # --- CORS Middleware ---
@@ -37,6 +36,8 @@ app.include_router(health_check_router.router, prefix=API_PREFIX)
 app.include_router(auth_router.router, prefix=API_PREFIX)
 app.include_router(user_router.router, prefix=API_PREFIX)
 app.include_router(document_router.router, prefix=API_PREFIX)
+app.include_router(search_router.router, prefix=API_PREFIX)
+app.include_router(chat_router.router, prefix=API_PREFIX)
 
 
 @app.get(f"{API_PREFIX}/ping")

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Enum
+from sqlalchemy import Column, Integer, String, Enum, event
 from sqlalchemy.orm import relationship
 import enum
 from src.db import Base
@@ -15,4 +15,11 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(Enum(RoleEnum), default=RoleEnum.user, nullable=True)
 
+    collection = Column(String, unique=True, nullable=False)
     documents = relationship("Document", back_populates="user")
+
+
+@event.listens_for(User, "before_insert")
+def set_collection(mapper, connection, target):
+    if not target.collection: 
+        target.collection = f"collection_{target.username}"

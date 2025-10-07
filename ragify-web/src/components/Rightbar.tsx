@@ -35,39 +35,48 @@ export default function Rightbar({ user, refreshDocs, setRefreshDocs }: Rightbar
           isOpen ? "w-96" : "w-0"
         }`}
       >
-        <div className="bg-white h-full border-l border-gray-300 shadow-lg p-6 flex-1 overflow-y-auto">
+        <div className="bg-white h-full border-l border-gray-300 shadow-lg flex flex-col">
           {isOpen && (
             <>
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-xl font-bold">Welcome, {user.username} 👋</h2>
-                  <p className="text-sm text-gray-600">Role: {user.role}</p>
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {/* Header */}
+                <div className="mb-6 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-bold">Welcome, {user.username} 👋</h2>
+                    <p className="text-sm text-gray-600">Role: {user.role}</p>
+                  </div>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="text-gray-600 hover:text-black text-lg font-bold"
+                  >
+                    ✖
+                  </button>
                 </div>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="text-gray-600 hover:text-black text-lg font-bold"
-                >
-                  ✖
-                </button>
+
+                {/* Upload Document */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold mb-2">Upload Document</h3>
+                  <DocumentUploader
+                    onUploadSuccess={() => {
+                      toast.success("Document uploaded successfully");
+                      setRefreshDocs((prev) => !prev);
+                    }}
+                  />
+                </div>
+
+                {/* Documents List */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Your Documents</h3>
+                  <DocumentList refreshTrigger={refreshDocs} />
+                </div>
               </div>
 
-              <Button onClick={handleLogout} variant="destructive" className="mb-8">
-                Logout
-              </Button>
-
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold mb-2">Upload Document</h3>
-                <DocumentUploader
-                  onUploadSuccess={() => {
-                    toast.success("Document uploaded successfully");
-                    setRefreshDocs((prev) => !prev);
-                  }}
-                />
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Your Documents</h3>
-                <DocumentList refreshTrigger={refreshDocs} />
+              {/* Logout Button at bottom */}
+              <div className="p-6 flex justify-center border-t border-gray-200">
+                <Button onClick={handleLogout} variant="destructive">
+                  Logout
+                </Button>
               </div>
             </>
           )}
