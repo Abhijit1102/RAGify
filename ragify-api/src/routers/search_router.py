@@ -1,17 +1,12 @@
 from fastapi import APIRouter, Depends, Body
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from src.auth.dependencies import get_current_user
 from src.models.users import User
 from src.vector_db.dependencies import get_user_qdrant_manager
 from src.db import get_db
 from src.controllers.search_controller import SearchController  # 👈 import here
-
+from src.schemas.search_query import SearchQuery
 router = APIRouter(prefix="/search", tags=["Search"])
-
-class SearchQuery(BaseModel):
-    query: str
-    session_name: str | None = None
 
 @router.post("/")
 def search_documents(
