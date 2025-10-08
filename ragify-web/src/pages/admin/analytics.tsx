@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import DashboardCard from "@/components/DashboardCard";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import ErrorMessage from "@/components/ErrorMessage"; // import new component
 
 interface PerUserStats {
   username: string;
@@ -26,15 +27,21 @@ interface AnalyticsData {
 export default function AdminAnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         const res = await api.get("/admin/analytics/");
-        setData(res.data.data); // using api_response format
-      } catch (err) {
+        setData(res.data.data);
+      } catch (err: any) {
         console.error(err);
-        toast.error("Failed to load analytics");
+
+        if (err.response?.status === 403) {
+          setError(err.response.data.detail || "You are not authorized to access this resource");
+        } else {
+          toast.error("Failed to load analytics");
+        }
       } finally {
         setLoading(false);
       }
@@ -42,10 +49,9 @@ export default function AdminAnalyticsPage() {
     fetchAnalytics();
   }, []);
 
-  if (loading)
-    return <p className="text-center mt-20 text-gray-400">Loading analytics...</p>;
-  if (!data)
-    return <p className="text-center mt-20 text-red-500">No data available</p>;
+  if (loading) return <p className="text-center mt-20 text-gray-400">Loading analytics...</p>;
+  if (error) return <ErrorMessage message={error} />; // use UI component for errors
+  if (!data) return <ErrorMessage message="No data available" />;
 
   return (
     <div className="p-6 bg-gray-900 min-h-screen flex flex-col items-center text-white">
@@ -73,7 +79,6 @@ export default function AdminAnalyticsPage() {
               Per User Stats
             </TabsTrigger>
           </TabsList>
-
 
           <TabsContent value="perUser">
             <ScrollArea className="h-[60vh] bg-gray-800 rounded p-4">

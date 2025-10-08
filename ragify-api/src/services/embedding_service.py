@@ -1,27 +1,30 @@
+import os
+from typing import List, Dict
 import openai
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from docx import Document as DocxDocument
 from src.config import Config
-from typing import List, Dict
-import os
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 class EmbeddingService:
     _instance = None
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super(EmbeddingService, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self, embedding_model: str = Config.OPENAI_EMBEDDING_MODEL):
-        if hasattr(self, "_initialized") and self._initialized:
+        if getattr(self, "_initialized", False):
             return
         self.model = embedding_model
         openai.api_key = Config.OPENAI_API_KEY
+        self._executor = ThreadPoolExecutor(max_workers=4)
         self._initialized = True
 
-    def process_document(self, file_path: str) -> List[Dict[str, any]]:
+    def process_document(self, file_path: str) -> List[Dict]:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -60,38 +63,25 @@ class EmbeddingService:
 
         return final_chunks
 
-    def embed_text(self, texts: List[str]) -> List[List[float]]:
+    async def embed_text_async(self, texts: List[str]) -> List[List[float]]:
+        """
+        Async wrapper for embedding texts in batches using threads.
+        """
+        loop = asyncio.get_event_loop()
         embeddings = []
+
         for i in range(0, len(texts), 100):
             batch = texts[i:i+100]
-            response = openai.embeddings.create(model=self.model, input=batch)
-            embeddings.extend([d.embedding for d in response.data])
+            batch_embeddings = await loop.run_in_executor(self._executor, self.embed_text_sync, batch)
+            embeddings.extend(batch_embeddings)
         return embeddings
 
-    def embed_documents_with_metadata(self, file_path: str) -> List[Dict[str, any]]:
+    def embed_text_sync(self, texts: List[str]) -> List[List[float]]:
         """
-        Returns embeddings with metadata:
-        - vector
-        - text
-        - file_name
-        - page_number
+        Synchronous batch embedding call to OpenAI
         """
-        chunks = self.process_document(file_path)
-        texts = [c["text"] for c in chunks]
-        embeddings = self.embed_text(texts)
-        file_name = os.path.basename(file_path)
-
-        return [
-            {
-                "vector": embeddings[i],
-                "payload": {
-                    "text": chunks[i]["text"],
-                    "file_name": file_name,
-                    "page_number": chunks[i]["page_number"]
-                }
-            }
-            for i in range(len(chunks))
-        ]
+        response = openai.embeddings.create(model=self.model, input=texts)
+        return [d.embedding for d in response.data]
 
     @staticmethod
     def clean_text(text: str) -> str:

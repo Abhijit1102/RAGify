@@ -7,6 +7,7 @@ class Config:
     # Server Configuration
     PORT = int(os.getenv("PORT", 8000))
     CLIENT_URL = os.getenv("CLIENT_URL", "http://localhost:5173")
+    UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
     
     # POSTGRES
     POSTGRES_URI = os.getenv("POSTGRES_URI")
