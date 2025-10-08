@@ -15,11 +15,13 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(Enum(RoleEnum), default=RoleEnum.user, nullable=True)
 
-    collection = Column(String, unique=True, nullable=False)
+    # Indexed + unique
+    collection = Column(String, unique=True, index=True, nullable=False)
+
     documents = relationship("Document", back_populates="user")
 
 
 @event.listens_for(User, "before_insert")
 def set_collection(mapper, connection, target):
-    if not target.collection: 
+    if not target.collection:
         target.collection = f"collection_{target.username}"

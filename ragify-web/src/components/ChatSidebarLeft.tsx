@@ -11,7 +11,6 @@ interface ChatSession {
   created_at: string;
 }
 
-// Props for Sidebar
 interface ChatSidebarLeftProps {
   selectedSessionId?: number;
   onSelectSession: (id: number) => void;
@@ -32,7 +31,6 @@ export default function ChatSidebarLeft({
     setLoading(true);
     try {
       const res = await api.get("/chat/sessions");
-      // Handle api_response format: data is under res.data.data
       const data = res.data.data || [];
       setSessions(data);
     } catch (err) {
@@ -47,10 +45,9 @@ export default function ChatSidebarLeft({
     if (isOpen) fetchSessions();
   }, [isOpen]);
 
-  // Start a new chat session
+  // Create new session
   const handleNewChat = async () => {
     try {
-      // Create new session via empty message
       const res = await api.post("/chat/messages/", { content: "New session" });
       const newSessionId = res.data.extra?.session_id || res.data.data?.id;
 
@@ -70,7 +67,6 @@ export default function ChatSidebarLeft({
 
   return (
     <>
-      {/* Sidebar */}
       <div
         className={`fixed top-0 left-0 h-full z-40 flex flex-col transition-all duration-300 overflow-hidden ${
           isOpen ? "w-80" : "w-0"
@@ -89,7 +85,9 @@ export default function ChatSidebarLeft({
                 <button
                   onClick={() => setIsOpen(false)}
                   className={`text-lg font-bold ${
-                    darkMode ? "text-gray-400 hover:text-white" : "text-gray-700 hover:text-black"
+                    darkMode
+                      ? "text-gray-400 hover:text-white"
+                      : "text-gray-700 hover:text-black"
                   }`}
                 >
                   ✖
@@ -109,11 +107,12 @@ export default function ChatSidebarLeft({
                 {loading ? "Loading..." : "+ Start New Chat"}
               </button>
 
-              {/* Chat Sessions List */}
+              {/* Session List */}
               <ul className="flex flex-col gap-2">
                 {sessions.map((session) => (
                   <li
                     key={session.id}
+                    onClick={() => onSelectSession(session.id)}
                     className={`p-2 rounded cursor-pointer transition-colors ${
                       selectedSessionId === session.id
                         ? darkMode
@@ -123,10 +122,13 @@ export default function ChatSidebarLeft({
                         ? "hover:bg-gray-700"
                         : "hover:bg-gray-200"
                     }`}
-                    onClick={() => onSelectSession(session.id)}
                   >
                     <div>{session.session_name || `Session ${session.id}`}</div>
-                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                    <div
+                      className={`text-xs ${
+                        darkMode ? "text-gray-400" : "text-gray-600"
+                      }`}
+                    >
                       {new Date(session.created_at).toLocaleString()}
                     </div>
                   </li>
@@ -137,7 +139,6 @@ export default function ChatSidebarLeft({
         </div>
       </div>
 
-      {/* Toggle Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}

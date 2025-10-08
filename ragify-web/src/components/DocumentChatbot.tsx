@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { api } from "../api/api"; 
+import { api } from "../api/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -15,7 +15,7 @@ interface ChatMessage {
 }
 
 interface DocumentChatbotProps {
-  sessionId?: number; // optional session id
+  sessionId?: number;
 }
 
 export default function DocumentChatbot({ sessionId }: DocumentChatbotProps) {
@@ -25,21 +25,25 @@ export default function DocumentChatbot({ sessionId }: DocumentChatbotProps) {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<number | undefined>(sessionId);
 
-  // Auto-scroll to bottom
+  // Sync when new session selected
+  useEffect(() => {
+    setCurrentSessionId(sessionId);
+  }, [sessionId]);
+
+  // Scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Fetch previous messages if sessionId is provided
+  // Fetch messages when session changes
   useEffect(() => {
     if (!currentSessionId) return;
 
-    setMessages([]); // clear previous messages
-
+    setMessages([]);
     const fetchMessages = async () => {
       try {
         const res = await api.get(`/chat/${currentSessionId}/messages`);
-        const fetchedMessages = res.data.map((msg: any) => ({
+        const fetchedMessages = res.data.data.map((msg: any) => ({
           type: msg.role === "user" ? "user" : "bot",
           content: msg.content,
           fileName: msg.file_name,
@@ -52,29 +56,26 @@ export default function DocumentChatbot({ sessionId }: DocumentChatbotProps) {
         toast.error("Failed to load chat messages");
       }
     };
-
     fetchMessages();
   }, [currentSessionId]);
 
-  // Send user query to /search/ API
+  // Send new message
   const handleSend = async () => {
     if (!query.trim()) return;
-
     setMessages((prev) => [...prev, { type: "user", content: query }]);
     setLoading(true);
 
     try {
       const res = await api.post("/search/", {
-        query: query,
+        query,
         session_name: currentSessionId ? `Session ${currentSessionId}` : undefined,
       });
 
-      // Extract AI response and session_id
       const botMsg = res.data.data?.[0];
       const sessionIdFromApi = res.data.session_id;
 
       if (sessionIdFromApi && !currentSessionId) {
-        setCurrentSessionId(sessionIdFromApi); // store session_id for future queries
+        setCurrentSessionId(sessionIdFromApi);
       }
 
       if (botMsg) {
@@ -116,8 +117,12 @@ export default function DocumentChatbot({ sessionId }: DocumentChatbotProps) {
                 <div className="flex flex-col gap-1">
                   <span className="font-medium">{msg.content}</span>
                   {msg.fileName && <span className="text-xs text-gray-300">File: {msg.fileName}</span>}
-                  {msg.pageNumber !== undefined && <span className="text-xs text-gray-300">Page: {msg.pageNumber}</span>}
-                  {msg.score !== undefined && <span className="text-xs text-gray-300">Score: {msg.score.toFixed(3)}</span>}
+                  {msg.pageNumber !== undefined && (
+                    <span className="text-xs text-gray-300">Page: {msg.pageNumber}</span>
+                  )}
+                  {msg.score !== undefined && (
+                    <span className="text-xs text-gray-300">Score: {msg.score.toFixed(3)}</span>
+                  )}
                 </div>
               ) : (
                 msg.content
