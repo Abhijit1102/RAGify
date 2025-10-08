@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 from src.models.chat_message import ChatSession, ChatMessage
@@ -6,12 +6,12 @@ from src.auth.dependencies import get_current_user
 from src.models.users import User
 from src.db import get_db
 from src.schemas.chat import ChatSessionResponse, ChatMessageResponse
-from pydantic import BaseModel
+from src.utils.api_response import api_response
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 # Fetch all sessions for a user
-@router.get("/sessions", response_model=List[ChatSessionResponse])
+@router.get("/sessions")
 def get_user_chat_sessions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -22,10 +22,14 @@ def get_user_chat_sessions(
         .order_by(ChatSession.created_at.desc())
         .all()
     )
-    return sessions
+
+    # Convert ORM -> Pydantic -> dict
+    sessions_response = [ChatSessionResponse.from_orm(s).model_dump() for s in sessions]
+
+    return api_response.success(data=sessions_response, message="Fetched user chat sessions")
 
 # Fetch messages for a session
-@router.get("/{session_id}/messages", response_model=List[ChatMessageResponse])
+@router.get("/{session_id}/messages")
 def get_chat_session_messages(
     session_id: int,
     current_user: User = Depends(get_current_user),
@@ -37,46 +41,68 @@ def get_chat_session_messages(
         .first()
     )
     if not session:
-        raise HTTPException(status_code=404, detail="Chat session not found")
-    return session.messages
+        return api_response.error(message="Chat session not found", status_code=404)
+
+    # Convert ORM -> Pydantic
+    messages_response = [ChatMessageResponse.from_orm(m) for m in session.messages]
+
+    return api_response.success(data=messages_response, message="Fetched chat messages")
+
 
 # Create a message (and session if needed)
+from pydantic import BaseModel
+
 class MessageCreate(BaseModel):
     content: str
     session_id: int | None = None  # optional for new session
 
-@router.post("/messages/", response_model=ChatMessageResponse)
+@router.post("/messages/")
 def post_message(
     msg: MessageCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Create new session if not provided
-    if not msg.session_id:
-        session = ChatSession(user_id=current_user.id)
-        db.add(session)
+    try:
+        # Create new session if not provided
+        if not msg.session_id:
+            session = ChatSession(user_id=current_user.id)
+            db.add(session)
+            db.commit()
+            db.refresh(session)
+        else:
+            session = db.query(ChatSession).filter(
+                ChatSession.id == msg.session_id, ChatSession.user_id == current_user.id
+            ).first()
+            if not session:
+                return api_response.error(message="Chat session not found", status_code=404)
+
+        # Set session_name from first message
+        if not session.session_name:
+            session.session_name = msg.content[:100]
+
+        # Save message
+        message = ChatMessage(
+            session_id=session.id,
+            role="user",
+            content=msg.content
+        )
+        db.add(message)
         db.commit()
-        db.refresh(session)
-    else:
-        session = db.query(ChatSession).filter(
-            ChatSession.id == msg.session_id, ChatSession.user_id == current_user.id
-        ).first()
-        if not session:
-            raise HTTPException(status_code=404, detail="Chat session not found")
+        db.refresh(message)
 
-    # Set session_name from first message
-    if not session.session_name:
-        session.session_name = msg.content[:100]
+        # Convert ORM -> Pydantic
+        message_response = ChatMessageResponse.from_orm(message)
 
-    # Save message
-    message = ChatMessage(
-        session_id=session.id,
-        role="user",
-        content=msg.content
-    )
-    db.add(message)
-    db.commit()
-    db.refresh(message)
-    db.refresh(session)
+        return api_response.success(
+            data=message_response,
+            message="Message sent successfully",
+            extra={"session_id": session.id}
+        )
 
-    return message
+    except Exception as e:
+        db.rollback()
+        return api_response.error(
+            message="Failed to post message",
+            status_code=500,
+            details=str(e)
+        )

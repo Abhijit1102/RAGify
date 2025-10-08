@@ -28,7 +28,7 @@ def search_documents_ai(
         return api_response.error(message="Invalid input query", status_code=400)
 
     try:
-        # 1️⃣ Create a new chat session for this query
+        # 1️⃣ Create a new chat session
         chat_session = ChatSession(user_id=current_user.id, session_name=body.session_name)
         db.add(chat_session)
         db.commit()
@@ -60,7 +60,8 @@ def search_documents_ai(
             db.commit()
             return api_response.success(
                 data=[{"text": "", "file_name": None, "page_number": None, "score": 0.0}],
-                message="No relevant documents found"
+                message="No relevant documents found",
+                extra={"session_id": chat_session.id}  
             )
 
         # 4️⃣ Generate AI answer
@@ -77,7 +78,7 @@ def search_documents_ai(
         bot_msg = ChatMessage(
             session_id=chat_session.id,
             role="bot",
-            content=ai_output.get("text", ""),  # assuming generator returns text
+            content=ai_output.get("text", ""),
             file_name=ai_output.get("file_name"),
             page_number=ai_output.get("page_number"),
             score=ai_output.get("score")
@@ -87,7 +88,8 @@ def search_documents_ai(
 
         return api_response.success(
             data=[ai_output],
-            message=f"AI-generated answer based on {len(docs)} documents"
+            message=f"AI-generated answer based on {len(docs)} documents",
+            extra={"session_id": chat_session.id}  
         )
 
     except Exception as e:

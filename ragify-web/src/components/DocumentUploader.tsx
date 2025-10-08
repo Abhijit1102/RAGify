@@ -18,14 +18,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadSuccess }) 
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // Handle file selection
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setSelectedFile(e.target.files[0]);
     }
   };
 
-  // Upload file to FastAPI
   const handleUpload = async () => {
     if (!selectedFile) {
       toast.error("Please select a file to upload");
@@ -35,13 +33,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadSuccess }) 
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append("file", selectedFile); // ✅ Must match FastAPI parameter
+      formData.append("file", selectedFile);
 
       const response = await fetch("http://localhost:8000/api/v1/documents/upload/", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
-          // Do NOT set Content-Type; browser sets it automatically for FormData
         },
         body: formData,
       });
@@ -52,13 +49,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadSuccess }) 
       }
 
       const data = await response.json();
-      const uploadedFile: UploadedFile = {
+      onUploadSuccess?.({
         file_name: data.data.file_name,
         url: data.data.url,
-      };
+      });
 
       toast.success("File uploaded successfully!");
-      onUploadSuccess?.(uploadedFile);
       setSelectedFile(null);
     } catch (err: any) {
       console.error(err);
@@ -69,20 +65,30 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadSuccess }) 
   };
 
   return (
-    <div className="flex flex-col gap-2 w-full max-w-md mx-auto p-4 border rounded shadow-md">
-      <Input
-        type="file"
-        onChange={handleFileChange}
-        disabled={uploading}
-        accept=".pdf,.doc,.docx,.txt" // optional: restrict file types
-      />
+    <div className="flex flex-col gap-2 w-full p-4 border border-gray-700 rounded bg-gray-800 text-white">
+      <label className="flex items-center justify-center p-2 border border-gray-600 rounded cursor-pointer hover:bg-gray-700">
+        <span>{selectedFile ? selectedFile.name : "Choose File"}</span>
+        <input
+          type="file"
+          onChange={handleFileChange}
+          disabled={uploading}
+          className="hidden"
+          accept=".pdf,.doc,.docx,.txt"
+        />
+      </label>
+
       {selectedFile && (
-        <p className="text-sm text-gray-500">Selected: {selectedFile.name}</p>
+        <p className="text-sm text-gray-400">Selected: {selectedFile.name}</p>
       )}
-      <Button onClick={handleUpload} disabled={uploading || !selectedFile}>
+
+      <Button
+        onClick={handleUpload}
+        disabled={uploading || !selectedFile}
+        className="bg-blue-600 hover:bg-blue-700 text-white"
+      >
         {uploading ? "Uploading..." : "Upload"}
       </Button>
-    </div>
+  </div>
   );
 };
 

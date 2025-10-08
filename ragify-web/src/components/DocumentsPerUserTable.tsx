@@ -20,6 +20,7 @@ export default function Home() {
   const [refreshDocs, setRefreshDocs] = useState(false);
   const navigate = useNavigate();
 
+  // Fetch logged-in user
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -35,43 +36,33 @@ export default function Home() {
 
   if (!user)
     return (
-      <div className="flex justify-center items-center h-screen text-gray-400 bg-gray-900">
+      <div className="flex justify-center items-center h-screen text-gray-500">
         Loading...
       </div>
     );
 
   return (
-    <div className="flex flex-col w-full h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <header className="bg-gray-800 shadow-md border-b border-gray-700 px-6 py-4 flex items-center justify-between">
+    <div className="flex flex-col w-full h-screen bg-gray-50">
+      {/* Header aligned like table */}
+      <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        {/* Left spacer (optional, like table first column) */}
         <div className="flex-1"></div>
 
-        <h1 className="text-lg font-semibold text-center flex-1">
+        {/* Centered title */}
+        <h1 className="text-lg font-semibold text-gray-800 text-center flex-1">
           📚 AI Document Chat
         </h1>
 
-
+        {/* Right user info (like table last column) */}
         <div className="flex items-center gap-4 flex-1 justify-end">
-          {user.role === "admin" && (
-            <button
-              onClick={() => navigate("/admin/analytics")}
-              className="ml-4 px-3 py-1 text-sm rounded bg-green-600 hover:bg-green-700 text-white transition-colors"
-            >
-              Admin Dashboard
-            </button>
-          )}
-
-          <span className="text-gray-300 text-sm">
-            Hello, <strong>{user.username.split("@")[0]}</strong> 👋
+          <span className="text-gray-600 text-sm">
+            Hello, <strong>{user.username}</strong> 👋
           </span>
-          <span className="px-2 py-1 text-xs rounded bg-blue-700 text-white">
+          <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
             {user.role}
           </span>
-
-          
         </div>
       </header>
-
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
@@ -79,11 +70,11 @@ export default function Home() {
         <ChatSidebarLeft
           selectedSessionId={selectedSessionId}
           onSelectSession={(id) => setSelectedSessionId(id)}
-          darkMode={true}
+          darkMode={true} // optional
         />
 
         {/* Center Chat */}
-        <main className="flex-1 overflow-auto p-6 bg-gray-900">
+        <main className="flex-1 overflow-auto p-6">
           <DocumentChatbot sessionId={selectedSessionId} />
         </main>
 

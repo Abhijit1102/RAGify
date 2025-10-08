@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { api } from "../api/api";
+import { api } from "../api/api"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -15,7 +15,7 @@ interface ChatMessage {
 }
 
 interface DocumentChatbotProps {
-  sessionId?: number;
+  sessionId?: number; // optional session id
 }
 
 export default function DocumentChatbot({ sessionId }: DocumentChatbotProps) {
@@ -23,19 +23,22 @@ export default function DocumentChatbot({ sessionId }: DocumentChatbotProps) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<number | undefined>(sessionId);
 
+  // Auto-scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Fetch previous messages if sessionId is provided
   useEffect(() => {
-    if (!sessionId) return;
+    if (!currentSessionId) return;
 
-    setMessages([]); // clear UI for new session
+    setMessages([]); // clear previous messages
 
     const fetchMessages = async () => {
       try {
-        const res = await api.get(`/chat/${sessionId}/messages`);
+        const res = await api.get(`/chat/${currentSessionId}/messages`);
         const fetchedMessages = res.data.map((msg: any) => ({
           type: msg.role === "user" ? "user" : "bot",
           content: msg.content,
@@ -51,22 +54,39 @@ export default function DocumentChatbot({ sessionId }: DocumentChatbotProps) {
     };
 
     fetchMessages();
-  }, [sessionId]);
+  }, [currentSessionId]);
 
+  // Send user query to /search/ API
   const handleSend = async () => {
-    if (!query.trim() || !sessionId) return;
+    if (!query.trim()) return;
 
     setMessages((prev) => [...prev, { type: "user", content: query }]);
     setLoading(true);
 
     try {
-      const res = await api.post("/chat/messages/", { content: query, session_id: sessionId });
-      const data = res.data;
+      const res = await api.post("/search/", {
+        query: query,
+        session_name: currentSessionId ? `Session ${currentSessionId}` : undefined,
+      });
 
-      if (data) {
+      // Extract AI response and session_id
+      const botMsg = res.data.data?.[0];
+      const sessionIdFromApi = res.data.session_id;
+
+      if (sessionIdFromApi && !currentSessionId) {
+        setCurrentSessionId(sessionIdFromApi); // store session_id for future queries
+      }
+
+      if (botMsg) {
         setMessages((prev) => [
           ...prev,
-          { type: "bot", content: data.content },
+          {
+            type: "bot",
+            content: botMsg.text || botMsg.content || "No relevant documents found.",
+            fileName: botMsg.file_name,
+            pageNumber: botMsg.page_number,
+            score: botMsg.score,
+          },
         ]);
       }
     } catch (err) {
@@ -79,18 +99,25 @@ export default function DocumentChatbot({ sessionId }: DocumentChatbotProps) {
   };
 
   return (
-    <div className="flex flex-col justify-center items-center w-full h-screen p-4 bg-gray-50">
-      <div className="flex flex-col w-full max-w-7xl h-[80vh] bg-white rounded shadow-lg p-4">
+    <div className="flex flex-col justify-center items-center w-full min-h-screen p-6 bg-gray-900 text-white">
+      <div className="flex flex-col w-full max-w-7xl h-[80vh] bg-gray-800 rounded-lg shadow-lg p-4">
+        {/* Chat messages */}
         <div className="flex-1 flex flex-col gap-2 overflow-y-auto mb-4 px-2">
           {messages.map((msg, idx) => (
-            <div key={idx}
-                 className={`p-2 rounded max-w-[70%] whitespace-pre-wrap ${msg.type === "user" ? "bg-blue-100 self-end text-right" : "bg-gray-200 self-start text-left"}`}>
+            <div
+              key={idx}
+              className={`p-3 rounded max-w-[70%] whitespace-pre-wrap break-words ${
+                msg.type === "user"
+                  ? "bg-white text-black self-end text-right"
+                  : "bg-gray-700 text-white self-start text-left"
+              }`}
+            >
               {msg.type === "bot" && (msg.fileName || msg.pageNumber || msg.score) ? (
                 <div className="flex flex-col gap-1">
                   <span className="font-medium">{msg.content}</span>
-                  {msg.fileName && <span className="text-xs text-gray-500">File: {msg.fileName}</span>}
-                  {msg.pageNumber !== undefined && <span className="text-xs text-gray-500">Page: {msg.pageNumber}</span>}
-                  {msg.score !== undefined && <span className="text-xs text-gray-500">Score: {msg.score.toFixed(3)}</span>}
+                  {msg.fileName && <span className="text-xs text-gray-300">File: {msg.fileName}</span>}
+                  {msg.pageNumber !== undefined && <span className="text-xs text-gray-300">Page: {msg.pageNumber}</span>}
+                  {msg.score !== undefined && <span className="text-xs text-gray-300">Score: {msg.score.toFixed(3)}</span>}
                 </div>
               ) : (
                 msg.content
@@ -100,17 +127,22 @@ export default function DocumentChatbot({ sessionId }: DocumentChatbotProps) {
           <div ref={chatEndRef} />
         </div>
 
-        <div className="flex gap-2">
+        {/* Input area */}
+        <div className="flex gap-2 mt-auto">
           <Input
             placeholder="Ask about your documents..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            disabled={loading || !sessionId}
-            className="flex-1"
+            disabled={loading}
+            className="flex-1 bg-white text-black placeholder-gray-500 rounded border border-gray-400 focus:ring focus:ring-blue-400 focus:border-blue-500"
           />
-          <Button onClick={handleSend} disabled={loading || !sessionId}>
-            {loading ? "Searching..." : "Send"}
+          <Button
+            onClick={handleSend}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+          >
+            {loading ? "Sending..." : "Send"}
           </Button>
         </div>
       </div>
